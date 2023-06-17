@@ -18,9 +18,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.black,
       statusBarBrightness: Brightness.dark,
@@ -28,7 +28,7 @@ void main() {
       systemNavigationBarColor: Colors.black,
       systemNavigationBarIconBrightness: Brightness.dark,
       systemNavigationBarDividerColor: Colors.black));
-  SystemChrome.setEnabledSystemUIMode(
+  await SystemChrome.setEnabledSystemUIMode(
       SystemUiMode.manual, overlays: [SystemUiOverlay.bottom, SystemUiOverlay.top]);
   bool enable = true;
   Wakelock.toggle(enable: enable);
@@ -152,8 +152,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
 
           if (beepStopTime == 30) {
             // 깨우기
-            await player.play(AssetSource('lib/alarm.mp3'),
-                mode: PlayerMode.mediaPlayer, volume: 1.0);
+            if(!forNight) {
+            await player.play(AssetSource('alarm.mp3'),
+                mode: PlayerMode.mediaPlayer, volume: 1.0); }
           }
 
           if (beepStopTime == 60) {
@@ -174,8 +175,8 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
           }
           if (fivesec >= (forNight ? 5 : 4)) {
             if (beepStopped == false) {
-              await player.play(AssetSource('lib/beep.wav'),
-                  mode: PlayerMode.lowLatency, volume: _val);
+              if(!forNight) { await player.play(AssetSource('beep.wav'),
+                  mode: PlayerMode.lowLatency, volume: _val); }
             }
 
             fivesec = 0;
@@ -194,7 +195,7 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
       });
     controller.forward();
 
-    detector = ShakeDetector.autoStart(onPhoneShake: () {
+    detector = ShakeDetector.autoStart(onPhoneShake: () async {
       setState(() {
         beepStopped = false;
         beepStopTime = 0;
@@ -203,8 +204,17 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
         }
         shaken = 50;
       });
+      if(!forNight) {
+      await player.play(AssetSource('beep.wav'),
+          mode: PlayerMode.lowLatency, volume: _val);
+      }
       // detector.stopListening();
-    });
+    },
+      minimumShakeCount: 1,
+      shakeSlopTimeMS: 500,
+      shakeCountResetTime: 3000,
+      shakeThresholdGravity: 1.04,
+    );
   }
 
   @override
@@ -252,9 +262,9 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                             leading: const Icon(Icons.timer, color: Colors.teal, size: 20),
                             title: Text(
                                 !beepStopped
-                                    ? locale.languageCode=='ko' ? "비프음 중단이 60초 이상 되면, 앱은 자동으로 종료됩니다" : "App closes automatically, If Beep is OFF for 60 seconds"
+                                    ? locale.languageCode=='ko' ? "비프음 중단이 30초 이상 되면, 앱은 자동으로 종료됩니다" : "App closes automatically, If Beep is OFF for 30 seconds"
                                     : locale.languageCode=='ko' ? '${30 - beepStopTime} ' +
-                                     "초 남았습니다 앱종료까지, 비프음을 진행하려면 기기를 살짝 흔들어요" : '${60 - beepStopTime} ' + "seconds Remain Before App closes, Shake Device A Little To Continue",
+                                     "초 남았습니다 앱종료까지, 비프음을 진행하려면 기기를 살짝 흔들어요" : '${30 - beepStopTime} ' + "seconds Remain Before App closes, Shake Device A Little To Continue",
                                 style: TrTextStyle('body')),
                           )),
                       Card(
