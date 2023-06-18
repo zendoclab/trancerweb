@@ -201,7 +201,6 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     controller.forward();
 
     detector = ShakeDetector.autoStart(onPhoneShake: () async {
-      ScaffoldMessenger.of(context).showSnackBar(locale.languageCode=='ko' ? const SnackBar(content: Text("흔들기 감지됨")) : const SnackBar(content: Text("Shake is Detected")));
       setState(() {
         beepStopped = false;
         beepStopTime = 0;
@@ -326,6 +325,17 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                                     "초 뒤 앱이 종료 됩니다. 흔드세요!" : 'Atfer ${30 - beepStopTime}s, ' + "App will closes. Shake!",
                                 style: TrTextStyle('body')),
                           )) : const Text(""),
+                      Card(
+                          color: Colors.black12,
+                          margin: const EdgeInsets.all(12.0),
+                          child: ListTile(
+                            leading: const Icon(Icons.waves, color: Colors.teal, size: 20),
+                            title: Text(
+                                shaken == 0
+                                    ? ''
+                                    : locale.languageCode=='ko' ? "흔들기 감지됨" : "Shake is Detected",
+                                style: TrTextStyle('body')),
+                          )),
                       Card(
                           color: Colors.black12,
                           margin: const EdgeInsets.all(12.0),
