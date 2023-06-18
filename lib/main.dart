@@ -76,7 +76,7 @@ AppBar trAppBar(context) {
           height: 2.0,
         )),
     centerTitle: false,
-    title: Text((locale.languageCode=='ko' ? '트랜서' : 'Trancer'),
+    title: Text((locale.languageCode=='ko' ? '트랜서2' : 'Trancer2'),
         style: const TextStyle(
             color: Colors.white38, fontSize: 18, fontWeight: FontWeight.bold)),
     automaticallyImplyLeading: false,
@@ -86,7 +86,7 @@ AppBar trAppBar(context) {
       actions: <Widget>[
         IconButton(onPressed: () {_launchUrl();}, icon: const Icon(Icons.question_mark, color: Colors.white38)),
         IconButton(onPressed: () {
-          locale.languageCode=='ko' ? Share.share('트랜서 – 입면 & 창의력 – https://zendoclab.github.io/trancer2/#/') : Share.share('Trancer – Hypnagogia & Creativity – https://zendoclab.github.io/trancer2/#/');
+          locale.languageCode=='ko' ? Share.share(subject: '트랜서2','입면 & 창의력 – https://zendoclab.github.io/trancer2/#/') : Share.share(subject: 'Trancer2','Hypnagogia & Creativity – https://zendoclab.github.io/trancer2/#/');
         }, icon: const Icon(Icons.share, color: Colors.white38))
       ]);
 }
@@ -121,11 +121,15 @@ bool forNight = true;
 class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin {
   late Animation<double> animation;
   late AnimationController controller;
+  late Locale locale;
+  bool _isStarted = false;
   bool _isPlaying = true;
+  bool firstBeep = false;
   bool beepStopped = false;
   int beepStopTime = 0;
   int shaken = 0;
   int fivesec = 3;
+
 
   @override
   void initState() {
@@ -139,43 +143,43 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
       ..addStatusListener((status) async {
         if (status == AnimationStatus.completed) {
           print("$beepStopped");
+          print("$beepStopTime");
           print("$fivesec");
-          fivesec += 1;
-          if (fivesec >= (forNight ? 5 : 4)) {
-            if (rand.nextInt((forNight ? 7 : 5)) == 1) {
+          print("$firstBeep");
+          if(_isStarted && !beepStopped) { fivesec += 1; }
+          if (fivesec >= 3) {
+            if ((rand.nextInt(5) == 1) && firstBeep) {
               // 여기에서 컨트롤러 고/스탑 by 셰이크
               setState(() {
                 beepStopped = true;
               });
             }
+            firstBeep = true;
           }
 
           if (beepStopTime == 30) {
             // 깨우기
-            if(!forNight) {
-            await player.play(AssetSource('alarm.mp3'),
+            if(forNight) {
+                await player.play(AssetSource('alarm.mp3'),
                 mode: PlayerMode.mediaPlayer, volume: 1.0); }
-          }
-
-          if (beepStopTime == 60) {
-            // 앱종료
-            controller.stop();
-            detector.stopListening();
-            Wakelock.toggle(enable: false);
-            SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+            else {
+              Wakelock.toggle(enable: false);
+              SystemChannels.platform.invokeMethod('SystemNavigator.pop');
+            }
           }
 
           controller.reverse();
         } else if (status == AnimationStatus.dismissed) {
           controller.forward();
-          if (beepStopped == true) {
+          if (beepStopped == true && _isStarted) {
             setState(() {
-              beepStopTime += 1;
+              if(beepStopTime<30) {
+              beepStopTime += 1; }
             });
           }
-          if (fivesec >= (forNight ? 5 : 4)) {
+          if (fivesec >= 3) {
             if (beepStopped == false) {
-              if(!forNight) { await player.play(AssetSource('beep.wav'),
+              if(_isStarted) { await player.play(AssetSource('beep.wav'),
                   mode: PlayerMode.lowLatency, volume: _val); }
             }
 
@@ -193,9 +197,11 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
           setState(() {});
         }
       });
+
     controller.forward();
 
     detector = ShakeDetector.autoStart(onPhoneShake: () async {
+      ScaffoldMessenger.of(context).showSnackBar(locale.languageCode=='ko' ? const SnackBar(content: Text("흔들기 감지됨")) : const SnackBar(content: Text("Shake is Detected")));
       setState(() {
         beepStopped = false;
         beepStopTime = 0;
@@ -204,10 +210,8 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
         }
         shaken = 50;
       });
-      if(!forNight) {
-      await player.play(AssetSource('beep.wav'),
-          mode: PlayerMode.lowLatency, volume: _val);
-      }
+      if(_isStarted) {await player.play(AssetSource('beep.wav'),
+          mode: PlayerMode.lowLatency, volume: _val); }
       // detector.stopListening();
     },
       minimumShakeCount: 1,
@@ -234,60 +238,48 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
     Locale locale = View.of(context).platformDispatcher.locale;
     return Scaffold(
         appBar: trAppBar(context),
-        body: SafeArea(
+        body: SingleChildScrollView(
+            child:SafeArea(
             child: Center(
                 child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: <Widget>[
-                      Text(locale.languageCode=='ko' ? "비프음을 관찰하는\n당신을 관찰하세요" : "Observe Yourself\nwho Observe Beep",
-                          style: TrTextStyle('title')),
-                      Text(locale.languageCode=='ko' ? "마음챙김" : "Be Mindful",
+                      Text(locale.languageCode=='ko' ? "자면서 비프음 관찰하기" : "Observing Beeps While Sleeping",
                           style: TrTextStyle('body')),
+
+                      const SizedBox(height: 8.0),
+                      _isStarted ? ElevatedButton(onPressed: () {
+                        setState(() {
+                          _isStarted = !_isStarted;
+                          beepStopped = false;
+                          beepStopTime = 0;
+                          fivesec = 0;
+                          player.stop();
+                        });
+                      },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black12, shape: const CircleBorder(),
+                        ),
+                        child:
+                        const Icon(Icons.stop, color: Colors.teal, size: 50),
+                      ) : ElevatedButton(onPressed: () {
+                        setState(() {
+                          _isStarted = !_isStarted;
+                        });
+                      },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.black12, shape: const CircleBorder(),
+                        ),
+                          child:
+                          const Icon(Icons.play_arrow, color: Colors.teal, size: 50),
+                          ),
+
+
                       Card(
                           color: Colors.black12,
                           margin: const EdgeInsets.all(12.0),
                           child: ListTile(
-                            leading:
-                            const Icon(Icons.music_note, color: Colors.teal, size: 20),
-                            title: Text(
-                                beepStopped
-                                    ? locale.languageCode=='ko' ? "비프음 중단" : "Beep is OFF"
-                                    : locale.languageCode=='ko' ? "비프음 진행" : "Beep is ON",
-                                style: TrTextStyle('body')),
-                          )),
-                      Card(
-                          color: Colors.black12,
-                          margin: const EdgeInsets.all(12.0),
-                          child: ListTile(
-                            leading: const Icon(Icons.timer, color: Colors.teal, size: 20),
-                            title: Text(
-                                !beepStopped
-                                    ? locale.languageCode=='ko' ? "비프음 중단이 30초 이상 되면, 앱은 자동으로 종료됩니다" : "App closes automatically, If Beep is OFF for 30 seconds"
-                                    : locale.languageCode=='ko' ? '${30 - beepStopTime} ' +
-                                     "초 남았습니다 앱종료까지, 비프음을 진행하려면 기기를 살짝 흔들어요" : '${30 - beepStopTime} ' + "seconds Remain Before App closes, Shake Device A Little To Continue",
-                                style: TrTextStyle('body')),
-                          )),
-                      Card(
-                          color: Colors.black12,
-                          margin: const EdgeInsets.all(12.0),
-                          child: ListTile(
-                            leading: const Icon(Icons.waves, color: Colors.teal, size: 20),
-                            title: Text(
-                                shaken == 0
-                                    ? ''
-                                    : locale.languageCode=='ko' ? "흔들기 감지됨" : "Shake is Detected",
-                                style: TrTextStyle('body')),
-                          )),
-                      const Divider(
-                        // height: 100,
-                        thickness: 1,
-                        color: Color.fromARGB(255, 51, 161, 59),
-                      ),
-                      Card(
-                          color: Colors.black12,
-                          margin: const EdgeInsets.all(12.0),
-                          child: ListTile(
-                            leading: !forNight
+                            leading: forNight
                                 ? const Icon(Icons.wb_sunny_rounded,
                                 color: Colors.teal, size: 20)
                                 : const Icon(Icons.nightlight_round,
@@ -303,11 +295,37 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                               activeColor: Colors.green,
                             ),
                             title: Text(
-                                forNight
-                                    ? locale.languageCode=='ko' ? '밤' : 'Night'
-                                    : locale.languageCode=='ko' ? '낮' : 'Day',
+                                locale.languageCode=='ko' ? '깨우기 알람' : 'WakeUp Alarm',
                                 style: TrTextStyle('body')),
                           )),
+                      _isStarted ?
+                      Card(
+                          color: Colors.black12,
+                          margin: const EdgeInsets.all(12.0),
+                          child: ListTile(
+                            leading:
+                            const Icon(Icons.music_note, color: Colors.teal, size: 20),
+                            title: Text(
+                                beepStopped
+                                    ? locale.languageCode=='ko' ? "비프음 중단됨" : "Beep is STOPPED"
+                                    : locale.languageCode=='ko' ? "비프음 진행중" : "Beep is ONGOING",
+                                style: TrTextStyle('body')),
+                          )) : const Text(""),
+                      _isStarted ?
+                      Card(
+                          color: Colors.black12,
+                          margin: const EdgeInsets.all(12.0),
+                          child: ListTile(
+                            leading: const Icon(Icons.timer, color: Colors.teal, size: 20),
+                            title: Text(
+                                !beepStopped
+                                    ? locale.languageCode=='ko' ? "비프음이 중단되면 폰을 흔드세요. 다시 진행!" : "Shake the phone when the beep stops. Go Again!"
+                                    : forNight ? locale.languageCode=='ko' ? '${30 - beepStopTime} ' +
+                                     "초 뒤 깨우기 알람이 시작됩니다. 흔드세요!" : 'Atfer ${30 - beepStopTime}s, ' + "Wakeup Alarm will starts. Shake!" :
+                                locale.languageCode=='ko' ? '${30 - beepStopTime} ' +
+                                    "초 뒤 앱이 종료 됩니다. 흔드세요!" : 'Atfer ${30 - beepStopTime}s, ' + "App will closes. Shake!",
+                                style: TrTextStyle('body')),
+                          )) : const Text(""),
                       Card(
                           color: Colors.black12,
                           margin: const EdgeInsets.all(12.0),
@@ -334,6 +352,6 @@ class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateM
                  */
                                     print("val:${val}");
                                   }))),
-                    ]))));
+                    ])))) );
   }
 }
